@@ -2,8 +2,14 @@
 
 from tkinter import *
 
+from random import randint
 from parser import parseObj
 from process import findNeighboursAndContours
+
+def drawLine(canvas, vertice1, vertice2, centreX, centreY, color, width):
+    canvas.create_line(centreX + vertice1[0], centreY - vertice1[1],
+                    centreX + vertice2[0], centreY - vertice2[1],
+                    fill=color, width=width)
 
 def drawObj(filename):
 
@@ -35,14 +41,13 @@ def drawObj(filename):
     for i in range(len(vertices)):
         for j in neighbours[i]:
             if j in contours[i]:
-                canvas.create_line(centreX + vertices[i][0], centreY - vertices[i][1],
-                                centreX + vertices[j][0], centreY - vertices[j][1],
-                                fill="red", width=2)
+                drawLine(canvas, vertices[i], vertices[j], centreX, centreY, "red", 2)
             else:
-                canvas.create_line(centreX + vertices[i][0], centreY - vertices[i][1],
-                                centreX + vertices[j][0], centreY - vertices[j][1],
-                                fill="grey")
+                drawLine(canvas, vertices[i], vertices[j], centreX, centreY, "grey", 1)
 
+    random_id = randint(0, len(vertices))
+    for j in neighbours[random_id]:
+        drawLine(canvas, vertices[random_id], vertices[j], centreX, centreY, "yellow", 2)
 
 
 
