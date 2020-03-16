@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-def parseObj(filename):
+def parseObj(filename, scale):
 
     def parseFace(info):
         return [int(i) for i in info.split("/")]
@@ -20,7 +20,7 @@ def parseObj(filename):
             if entete == 'o':
                 print("Parsing of object :", infos[1])
             elif entete == 'v':
-                vertices.append([float(infos[1]), float(infos[2]), float(infos[3])])
+                vertices.append([scale * float(infos[1]), scale * float(infos[2]), scale * float(infos[3])])
             elif entete == 'vt':
                 textureCoord.append([float(infos[1]), float(infos[2])])
             elif entete == 'vn':
