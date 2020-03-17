@@ -26,3 +26,7 @@
 
 ![Alt text](/screenshots/1ringSurunbord.png?raw=true "Optional Title")
 
+
+### Etape 5 : Croix sur les sommets avec un angle aléatoire
+
+![Alt text](/screenshots/croixaleatoires.png?raw=true "Optional Title")
