@@ -4,8 +4,9 @@ from tkinter import *
 
 from random import randint, random
 from parser import parseObj
-from math import cos, sin, sqrt
-from process import findNeighboursAndContours
+from math import cos, sin, sqrt, acos
+from process import findNeighboursAndContours, computeNormalOfContour, computeNormalsOfVertices, propagateConstraints
+
 
 centreX, centreY = 0, 0
 canvas_width = 2000
@@ -22,7 +23,7 @@ def initGlobalVariables(vertices):
     dimension = 0.8
     deltaX = (maxX - minX)
     deltaY = (maxY - minY)
-    print(deltaY, deltaX, "ok")
+
     debutX = (max(deltaX / canvas_width, deltaY / canvas_height) * canvas_width - dimension * deltaX) / (2 * dimension * deltaX)
     debutY = (max(deltaX / canvas_width, deltaY / canvas_height) * canvas_width - dimension * deltaY) / (2 * dimension * deltaY)
 
@@ -44,41 +45,42 @@ def drawLine(canvas, vertice1, vertice2, color, width):
                     setCoordX(vertice2[0]), setCoordY(vertice2[1]),
                     fill=color, width=width)
 
-def drawNormalVector(canvas, vertice1, vertice2, vertice3, color="blue", width=1, d=600):
-    vmid = [(vertice2[i] + vertice1[i]) / 2 for i in range(2)]
-    ux, uy = [(vertice2[i] - vertice1[i]) for i in range(2)]
-    vx, vy = sqrt(uy**2 / (ux**2 + uy**2) * d), sqrt(ux**2 / (ux**2 + uy**2) * d)
-    if(abs(vx * ux + vy * uy) > 0.001):
-        vx = -vx
-    if(abs(vx * ux + vy * uy) > 0.001):
-        print("erreur de conception mathématique 1")
-    wx, wy = [(vertice3[i] - vmid[i]) for i in range(2)]
-    if ux == 0:
-        if vy != 0:
-            print("erreur de conception mathématique 2 :", vy)
-        if vx * wx >= 0:
-            vx = -vx
-    elif vy * (wy - uy / ux * wx) >= 0 :
-        vx, vy = -vx, -vy
+def drawNormalVector(canvas, origin, vx, vy, color="blue", width=1, d=20):
+    if (vx == 0 and vy == 0):
+        return
+    #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
 
-    canvas.create_line(setCoordX(vmid[0]), setCoordY(vmid[1]),
-                        setCoordX(vmid[0]) + vx, setCoordY(vmid[1]) - vy,
+    canvas.create_line(setCoordX(origin[0]), setCoordY(origin[1]),
+                        setCoordX(origin[0]) + vx, setCoordY(origin[1]) - vy,
                         fill=color, width=width)
 
-    lenU = sqrt(ux ** 2 + uy ** 2)
-    lenV = sqrt(vx ** 2 + vy ** 2)
-    b1x = ux * 5/lenU - vx * 5/lenV
-    b1y = uy * 5/lenU - vy * 5/lenV
+def drawConstraint(canvas, origin, vx, vy, color="orange", width=3, d=20):
 
-    canvas.create_line(setCoordX(vmid[0]) + vx, setCoordY(vmid[1]) - vy,
-                        setCoordX(vmid[0]) + vx + b1x, setCoordY(vmid[1]) -vy - b1y,
+    if (vx == 0 and vy == 0):
+        vx = 1
+
+    angle = acos(vx)
+
+    vx *= d
+    vy *= d
+
+    #PI = 3.14159
+
+    #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
+    #red = int(max(0, 255* 2/PI * angle))
+    #green = 0 #int(max(0, 3/PI * angle * 255 if angle < 3/PI else 255 * (1 - 3/PI * (angle - PI / 3))))
+    #blue = 0 #if int(max(0, 3/PI * (angle - PI/ 3) * 255 if angle < 3/PI else 255 * (1 - 3/PI * (angle - 2*PI / 3))))
+    #color = "#" + '{:02x}'.format(red) + '{:02x}'.format(green)  + '{:02x}'.format(blue)
+
+
+    canvas.create_line(setCoordX(origin[0]) - vx/2, setCoordY(origin[1]) + vy/2,
+                        setCoordX(origin[0]) + vx/2, setCoordY(origin[1]) - vy/2,
                         fill=color, width=width)
 
-    b2x = - ux * 5/lenU - vx * 5/lenV
-    b2y = - uy * 5/lenU - vy * 5/lenV
-    canvas.create_line(setCoordX(vmid[0]) + vx, setCoordY(vmid[1]) - vy,
-                        setCoordX(vmid[0]) + vx + b2x, setCoordY(vmid[1]) - vy - b2y,
+    canvas.create_line(setCoordX(origin[0]) + vy/2, setCoordY(origin[1]) + vx/2,
+                        setCoordX(origin[0]) - vy/2, setCoordY(origin[1]) - vx/2,
                         fill=color, width=width)
+
 
 def setCoordX(curX):
     #return centreX + curX * scale
@@ -92,13 +94,15 @@ def drawObj(filename):
 
     master = Tk()
 
+    master.title("Quads")
+
     vertices, textureCoord, normals, faces = parseObj(filename)
 
     initGlobalVariables(vertices)
 
-    print(centreX, centreY, scale)
-
     neighbours, contours = findNeighboursAndContours(len(vertices), faces)
+
+    normals = computeNormalsOfVertices(vertices, neighbours, contours, d=100)
 
 
     canvas = Canvas(master,
@@ -108,13 +112,21 @@ def drawObj(filename):
 
     canvas.create_rectangle(0, 0, canvas_width, canvas_height, fill= "white")
 
-    print(setCoordX(40))
 
-    for face in faces:
-        v1, v2, v3 = face[0][0] - 1, face[1][0] - 1, face[2][0] - 1
-        canvas.create_polygon(setCoordX(vertices[v1][0]), setCoordY(vertices[v1][1]),
-                            setCoordX(vertices[v2][0]), setCoordY(vertices[v2][1]),
-                            setCoordX(vertices[v3][0]), setCoordY(vertices[v3][1]))
+    show_triangles = True
+    show_normal_vectors_segments_contour = False
+    show_normal_vectors_vertices_contour = False
+    show_contour = True
+    show_links_between_vertices = True
+    show_random_1ring = True
+    show_constraints = True
+
+    if show_triangles:
+        for face in faces:
+            v1, v2, v3 = face[0][0] - 1, face[1][0] - 1, face[2][0] - 1
+            canvas.create_polygon(setCoordX(vertices[v1][0]), setCoordY(vertices[v1][1]),
+                                setCoordX(vertices[v2][0]), setCoordY(vertices[v2][1]),
+                                setCoordX(vertices[v3][0]), setCoordY(vertices[v3][1]))
 
     for i in range(len(vertices)):
         for j in neighbours[i]:
@@ -122,15 +134,31 @@ def drawObj(filename):
                 continue
             key = i, j
             if key in contours:
-                if random() > 0:
-                    drawNormalVector(canvas, vertices[i], vertices[j], vertices[contours[key]])
-                drawLine(canvas, vertices[i], vertices[j], "green", 5)
+                if show_normal_vectors_segments_contour:
+                    vmid, vx, vy = computeNormalOfContour(vertices[i], vertices[j], vertices[contours[key][0]])
+                    drawNormalVector(canvas, vmid, vx, vy)
+                if show_contour:
+                    drawLine(canvas, vertices[i], vertices[j], "green", 5)
             else:
-                drawLine(canvas, vertices[i], vertices[j], "grey", 1)
+                if show_links_between_vertices:
+                    drawLine(canvas, vertices[i], vertices[j], "grey", 1)
 
-    random_id = randint(0, len(vertices))
-    for j in neighbours[random_id]:
-        drawLine(canvas, vertices[random_id], vertices[j], "yellow", 2)
+    if show_random_1ring :
+        random_id = randint(0, len(vertices))
+        for j in neighbours[random_id]:
+            drawLine(canvas, vertices[random_id], vertices[j], "yellow", 2)
+
+    if show_normal_vectors_vertices_contour:
+        for i in range(len(vertices)):
+            drawNormalVector(canvas, vertices[i], normals[i][0], normals[i][1])
+
+    propagateConstraints(normals, neighbours)
+
+    if show_constraints:
+        for i in range(len(vertices)):
+            drawConstraint(canvas, vertices[i], normals[i][0], normals[i][1])
+
+
 
     #for vertice in vertices:
     #    drawCross(canvas, vertice, 10, random() * 3.14/2, "orange", 4)
