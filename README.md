@@ -30,3 +30,23 @@
 ### Etape 5 : Croix sur les sommets avec un angle aléatoire
 
 ![Alt text](/screenshots/croixaleatoires.png?raw=true "Optional Title")
+
+### Etape 5b : Vecteurs normaux sur les milieux d'arêtes
+
+![Alt text](/screenshots/vecteursnormauxsurcanard.png?raw=true "Optional Title")
+
+
+### Etape 5b : Vecteurs normaux sur les sommets
+
+![Alt text](/screenshots/deuxiemeessai.png?raw=true "Optional Title")
+
+
+### Etape 6 : Afficher les contraintes sur le bord et 0 à l'interieur
+
+![Alt text](/screenshots/contraintes.png?raw=true "Optional Title")
+
+
+### Etape 7 : Afficher un champ lissé à l'interieur
+
+![Alt text](/screenshots/deuxiemeessai.png?raw=true "Optional Title")
+![Alt text](/screenshots/duck_example.png?raw=true "Optional Title")
