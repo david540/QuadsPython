@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from itertools import permutations
-from math import sqrt, acos, cos
-
+from math import sqrt, acos, cos, sin, asin
+import numpy as np
+import scipy.sparse.linalg
+import cmath
 
 PI = 3.14159
 
@@ -46,7 +48,7 @@ def computeNormalOfContour(vertice1, vertice2, vertice3, d=600):
     [vx, vy] = normalize([vx, vy])
     return vmid, vx, vy
 
-def propagateConstraints(normals, neighbours, nbiters = 1000):
+def propagateConstraints(normals, neighbours, nbiters = 1):
     idsInside = []
     for i in range(len(normals)):
         if normals[i][0] == 0 and normals[i][1] == 0:
@@ -76,6 +78,164 @@ def propagateConstraints(normals, neighbours, nbiters = 1000):
         for i in idsInside:
             normals[i] = normalize(newnormals[i])
 
+def solveLinearEquation(normals, neighbours):
+    C = 100
+    idsInside = []
+    idsBoundary = []
+    frames = []
+    for i in range(len(normals)):
+        #print(normals[i])
+        if normals[i][0] == 0 and normals[i][1] == 0:
+            idsInside.append(i)
+            frames.append([1, 0])
+        else:
+            idsBoundary.append(i)
+            frames.append([cos(4 * acos(normals[i][0])), sin(4 * acos(normals[i][0]))])
+
+
+    A = []
+    b = []
+    numLine = 0
+
+    for i in range(len(neighbours)):
+        if i in idsBoundary:
+            A.append([0 for i in range(2 * len(neighbours))])
+            A[numLine][2 * i] = C
+            b.append([C * frames[i][0]])
+            numLine += 1
+
+            A.append([0 for i in range(2 * len(neighbours))])
+            A[numLine][2 * i + 1] = C
+            b.append([C * frames[i][1]])
+            numLine += 1
+
+
+        for j in neighbours[i]:
+            A.append([0 for i in range(2 * len(neighbours))])
+            A[numLine][2 * i] = sqrt(PI)
+            A[numLine][2 * j] = - sqrt(PI)
+            b.append([0])
+            numLine += 1
+
+            A.append([0 for i in range(2 * len(neighbours))])
+            A[numLine][2 * i + 1] = sqrt(PI)
+            A[numLine][2 * j + 1] = - sqrt(PI)
+            b.append([0])
+            numLine += 1
+
+    #print(b)
+    A = np.matrix(A)
+    b = np.matrix(b)
+
+    #print(b)
+
+
+    At = A.getT()
+
+
+    At_A = At * A
+    At_b = At * b
+
+    #print(At_b)
+
+    X = np.linalg.inv(At * A) * At * b
+
+    #X = ((np.linalg.inv(At_A)*At_b).transpose().tolist()[0])
+
+    #X = (np.linalg.inv(At_A)*At_b)
+
+    #X = matrixProduct3(np.linalg.inv(A), b)
+    #for i in range(len(X)):
+    #    X[i] %= PI/2
+    #print(X)
+    #test()
+
+    #print(At_A, At_b)
+    #print(At_A.shape())
+    #print(At_B.shape())
+
+    #X = np.matrix(scipy.sparse.linalg.cg(At_A, At_b)[0]).transpose()
+    #print(X)
+
+    verifJustesse(A, b, X, neighbours)
+
+    A_X = A * X
+    #X = X.transpose().tolist()[0]
+    #X = b
+    #for i in idsBoundary:
+#        X[i] = b[i]
+    #print(X,"\n\n\n")
+    #for i in range(len(neighbours)):
+        #print(X[2 * i], X[2 * i + 1])
+        #normals[i] = normalize([X[2 * i], X[2 * i + 1]])
+    #print(normals)
+
+
+def solveLinearEquationComplex(normals, neighbours):
+    idsInside = []
+    idsBoundary = []
+    frames = []
+    for i in range(len(normals)):
+        #print(normals[i])
+        if normals[i][0] == 0 and normals[i][1] == 0:
+            idsInside.append(i)
+            frames.append(complex(1, 0))
+        else:
+            idsBoundary.append(i)
+            frames.append(cmath.rect(1, 4 * acos(normals[i][0])))
+            #print(normals[i], cmath.rect(1, normals[i][0]))
+
+    A = [[0 for j in range(len(neighbours))] for i in range(len(neighbours))]
+    b = [[0] for j in range(len(neighbours))]
+
+    for i in range(len(neighbours)):
+        if i in idsBoundary:
+            A[i][i] = 1
+            b[i][0] = frames[i]
+        else:
+            for j in neighbours[i]:
+                if j in idsBoundary:
+                    b[i][0] += frames[j]
+                else:
+                    A[i][j] = -1
+            A[i][i] = len(neighbours[i])
+
+    #print(b)
+    A = np.matrix(A)
+    b = np.matrix(b)
+
+    X = np.linalg.inv(A) * b
+
+
+
+    #X = ((np.linalg.inv(A)*b).transpose().tolist()[0])
+    #verifJustesse(A, b, X, neighbours, idsBoundary)
+    for i in range(len(neighbours)):
+        #normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
+        normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
+
+
+def verifJustesse(A, b, X, neighbours, idsBoundary):
+
+    A_X = A * X
+    A_X = A_X.tolist()
+    b = b.tolist()
+    som = 0
+    for i in range(len(neighbours)):
+        #print(A_X[i][0])
+        som += (A_X[i][0] - b[i][0])
+        #print(A_X[i] - b[i])
+
+    for i in idsBoundary:
+        print(X[i], b[i])
+
+
+    print(som)
+    #for i in range(len(neighbours)):
+    #    som = A[i, i] * X[i]
+    #    for j in neighbours[i]:
+    #        som += A[i, j] * X[j]
+    #    print(som - b[i, 0])
 
 def findNeighboursAndContours(nbVertices, faces):
     neighbours = [[] for i in range(nbVertices)]

@@ -2,10 +2,13 @@
 
 from tkinter import *
 
+import numpy as np
+
 from random import randint, random
 from parser import parseObj
 from math import cos, sin, sqrt, acos
-from process import findNeighboursAndContours, computeNormalOfContour, computeNormalsOfVertices, propagateConstraints
+from process import findNeighboursAndContours, computeNormalOfContour,\
+computeNormalsOfVertices, propagateConstraints, solveLinearEquationComplex
 
 
 centreX, centreY = 0, 0
@@ -119,7 +122,7 @@ def drawObj(filename):
     show_contour = True
     show_links_between_vertices = True
     show_random_1ring = True
-    show_constraints = True
+    show_constraints = False
 
     if show_triangles:
         for face in faces:
@@ -152,13 +155,16 @@ def drawObj(filename):
         for i in range(len(vertices)):
             drawNormalVector(canvas, vertices[i], normals[i][0], normals[i][1])
 
-    propagateConstraints(normals, neighbours)
+    #propagateConstraints(normals, neighbours)
 
     if show_constraints:
         for i in range(len(vertices)):
             drawConstraint(canvas, vertices[i], normals[i][0], normals[i][1])
 
+    solveLinearEquationComplex(normals, neighbours)
 
+    for i in range(len(vertices)):
+        drawConstraint(canvas, vertices[i], normals[i][0], normals[i][1])
 
     #for vertice in vertices:
     #    drawCross(canvas, vertice, 10, random() * 3.14/2, "orange", 4)
