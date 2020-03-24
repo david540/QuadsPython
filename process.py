@@ -6,27 +6,36 @@ import numpy as np
 import scipy.sparse.linalg
 import cmath
 
-PI = 3.14159
 
 def computeNormalsOfVertices(vertices, neighbours, contours, d=600):
     def computeCosAngle(u, v):
         return (u[0] * v[0] + u[1] * v[1]) / ( sqrt(u[0] * u[0] + u[1] * u[1]) * sqrt(v[0] * v[0] + v[1] * v[1]) )
 
-    normals = [[0, 0] for i in range(len(vertices))]
+    dz = [complex(0, 0) for i in range(len(vertices))]
+    quadrants = [0 for i in range(len(vertices))]
+
+    corners = []
 
     for i in range(len(vertices)):
+        vmid, vx, vy = 0, 0, 0
+        initial_z = complex(1, 0)
         for j in neighbours[i]:
             key = min(i, j), max(i, j)
             if key in contours:
                 vmid, vx, vy = computeNormalOfContour(vertices[i], vertices[j], vertices[contours[key][0]], d=d)
-                if (normals[i][0] != 0 or  normals[i][1] != 0):
-                    while computeCosAngle((normals[i][0], normals[i][1]), (vx, vy)) < 0.7:
-                        vx, vy = -vy, vx #A COMPRENDRE POURQUOI uy et pas -uy
-                normals[i][0] += vx
-                normals[i][1] += vy
-        normals[i] = normalize(normals[i])
+                initial_z = complex(vx, vy)
+                z = cmath.rect(1, 4 * cmath.phase(initial_z))
+                dz[i] += z
 
-    return normals
+        if dz[i] != 0:
+            dz[i] /= abs(dz[i])
+            while abs((cmath.phase(dz[i]) / 4 - cmath.phase(initial_z) + np.pi/2 * quadrants[i])) > np.pi /4:
+                if cmath.phase(dz[i]) / 4 + np.pi/2 * quadrants[i] < cmath.phase(initial_z):
+                    quadrants[i] += 1
+                else:
+                    quadrants[i] -= 1
+
+    return dz, quadrants
 
 def computeNormalOfContour(vertice1, vertice2, vertice3, d=600):
     vmid = [(vertice2[i] + vertice1[i]) / 2 for i in range(2)]
@@ -45,7 +54,7 @@ def computeNormalOfContour(vertice1, vertice2, vertice3, d=600):
     elif vy * (wy - uy / ux * wx) >= 0 :
         vx, vy = -vx, -vy
 
-    [vx, vy] = normalize([vx, vy])
+    [vx, vy] = normalize([vx, vy], False)
     return vmid, vx, vy
 
 def propagateConstraints(normals, neighbours, nbiters = 1):
@@ -64,126 +73,43 @@ def propagateConstraints(normals, neighbours, nbiters = 1):
                 angle = acos(normals[nei][0])
                 if count > 0 :
                     angle_mean = somme/ count
-                    if angle - angle_mean > PI/4:
-                        angle -= PI/2
-                    elif angle - angle_mean < -PI/4:
-                        angle += PI/2
+                    if angle - angle_mean > np.pi/4:
+                        angle -= np.pi/2
+                    elif angle - angle_mean < -np.pi/4:
+                        angle += np.pi/2
                 somme += angle
                 count += 1
 
             somme /= count
-            somme %= PI/2
+            somme %= np.pi/2
             newnormals[i] = cos(somme), sqrt(1 - cos(somme)**2)
 
         for i in idsInside:
             normals[i] = normalize(newnormals[i])
 
-def solveLinearEquation(normals, neighbours):
-    C = 100
+def defineBoundary(dz):
     idsInside = []
     idsBoundary = []
-    frames = []
-    for i in range(len(normals)):
+    for i in range(len(dz)):
         #print(normals[i])
-        if normals[i][0] == 0 and normals[i][1] == 0:
+        if dz[i] == 0:
             idsInside.append(i)
-            frames.append([1, 0])
         else:
             idsBoundary.append(i)
-            frames.append([cos(4 * acos(normals[i][0])), sin(4 * acos(normals[i][0]))])
+    return idsInside, idsBoundary
 
-
-    A = []
-    b = []
-    numLine = 0
-
-    for i in range(len(neighbours)):
-        if i in idsBoundary:
-            A.append([0 for i in range(2 * len(neighbours))])
-            A[numLine][2 * i] = C
-            b.append([C * frames[i][0]])
-            numLine += 1
-
-            A.append([0 for i in range(2 * len(neighbours))])
-            A[numLine][2 * i + 1] = C
-            b.append([C * frames[i][1]])
-            numLine += 1
-
-
-        for j in neighbours[i]:
-            A.append([0 for i in range(2 * len(neighbours))])
-            A[numLine][2 * i] = sqrt(PI)
-            A[numLine][2 * j] = - sqrt(PI)
-            b.append([0])
-            numLine += 1
-
-            A.append([0 for i in range(2 * len(neighbours))])
-            A[numLine][2 * i + 1] = sqrt(PI)
-            A[numLine][2 * j + 1] = - sqrt(PI)
-            b.append([0])
-            numLine += 1
-
-    #print(b)
-    A = np.matrix(A)
-    b = np.matrix(b)
-
-    #print(b)
-
-
-    At = A.getT()
-
-
-    At_A = At * A
-    At_b = At * b
-
-    #print(At_b)
-
-    X = np.linalg.inv(At * A) * At * b
-
-    #X = ((np.linalg.inv(At_A)*At_b).transpose().tolist()[0])
-
-    #X = (np.linalg.inv(At_A)*At_b)
-
-    #X = matrixProduct3(np.linalg.inv(A), b)
-    #for i in range(len(X)):
-    #    X[i] %= PI/2
-    #print(X)
-    #test()
-
-    #print(At_A, At_b)
-    #print(At_A.shape())
-    #print(At_B.shape())
-
-    #X = np.matrix(scipy.sparse.linalg.cg(At_A, At_b)[0]).transpose()
-    #print(X)
-
-    verifJustesse(A, b, X, neighbours)
-
-    A_X = A * X
-    #X = X.transpose().tolist()[0]
-    #X = b
-    #for i in idsBoundary:
-#        X[i] = b[i]
-    #print(X,"\n\n\n")
-    #for i in range(len(neighbours)):
-        #print(X[2 * i], X[2 * i + 1])
-        #normals[i] = normalize([X[2 * i], X[2 * i + 1]])
-    #print(normals)
-
-
-def solveLinearEquationComplex(normals, neighbours):
-    idsInside = []
-    idsBoundary = []
+def solveLinearEquationComplex(dz, neighbours, idsInside, idsBoundary):
+    dz = [dz[i] for i in range(len(dz))]
     frames = []
-    for i in range(len(normals)):
+    for i in range(len(dz)):
         #print(normals[i])
-        if normals[i][0] == 0 and normals[i][1] == 0:
-            idsInside.append(i)
+        if dz[i] == 0:
             frames.append(complex(1, 0))
         else:
-            idsBoundary.append(i)
-            frames.append(cmath.rect(1, 4 * acos(normals[i][0])))
+            frames.append(dz[i])
             #print(normals[i], cmath.rect(1, normals[i][0]))
+
+    #dz = [complex(1,0) for j in range(len(neighbours))]
 
     A = [[0 for j in range(len(neighbours))] for i in range(len(neighbours))]
     b = [[0] for j in range(len(neighbours))]
@@ -207,12 +133,93 @@ def solveLinearEquationComplex(normals, neighbours):
     X = np.linalg.inv(A) * b
 
 
-
+        #print(X)
     #X = ((np.linalg.inv(A)*b).transpose().tolist()[0])
     #verifJustesse(A, b, X, neighbours, idsBoundary)
     for i in range(len(neighbours)):
         #normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
-        normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
+        #normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
+        dz[i] = X[i, 0]
+
+    return dz
+
+
+
+def computeIsoValueLines(neighbours, dz, vertices, idsBoundary, quadrants, eps = 0.1):
+    def dist(p, v):
+        return sqrt((v[0] - p[0]) ** 2 + (v[1] - p[1]) ** 2)
+
+    startingCorner = 0
+    for i in range(len(neighbours)):
+        if len(neighbours[i]) == 2:
+            startingCorner = i
+            break
+
+    lines = []
+
+    cornerCount = 0
+    boundId = neighbours[startingCorner][0]
+    oldId = startingCorner
+    oldoldId = neighbours[startingCorner][1]
+    for loop in range(40):
+        closestId = boundId
+        p = vertices[boundId]
+        lines.append([p])
+        oldAngle = cmath.phase(dz[boundId]) / 4 + quadrants[boundId] * np.pi/2
+        #while dist([cos(oldAngle), sin(oldAngle)], normals[boundId]) > 0.01:
+        #    oldAngle += np.pi/2
+        #for i in range(0, 4):
+
+        oldAngle += np.pi
+        for _ in range(300):
+            distance = dist(p, vertices[closestId])
+            if distance < 0.01:
+                curDz = dz[closestId]
+            else:
+                curDz = dz[closestId] / distance
+                for n in neighbours[closestId]:
+                    distance = dist(p, vertices[n])
+                    if distance < 0.01:
+                        curDz = dz[n]
+                        break
+                    curDz += dz[n] / distance
+
+            angle = cmath.phase(curDz) / 4
+            while abs(angle - oldAngle) > np.pi/4:
+                if angle < oldAngle:
+                    angle += np.pi/2
+                else:
+                    angle -= np.pi/2
+            angle %= 2*np.pi
+            if _ == 0:
+                #print(angle, oldAngle)
+                angle = oldAngle
+            p= [p[0] + eps * cos(angle), p[1] + eps * sin(angle)]
+
+            #for i in range(neighbours[])
+
+            lines[-1].append(p)
+
+            argmin = closestId
+            distmin = dist(p, vertices[closestId])
+            for i in neighbours[closestId]:
+                distance = dist(p, vertices[i])
+                if distance < distmin :
+                    distmin = distance
+                    argmin = i
+                    #print(argmin)
+
+            closestId = argmin
+            oldAngle = angle
+
+        for n in neighbours[boundId]:
+            if n in idsBoundary and n != oldId and n != oldoldId:
+                boundId, oldId, oldoldId = n, boundId, oldId
+
+
+
+
+    return lines
 
 
 def verifJustesse(A, b, X, neighbours, idsBoundary):
@@ -226,8 +233,8 @@ def verifJustesse(A, b, X, neighbours, idsBoundary):
         som += (A_X[i][0] - b[i][0])
         #print(A_X[i] - b[i])
 
-    for i in idsBoundary:
-        print(X[i], b[i])
+    #for i in idsBoundary:
+    #    print(X[i], b[i])
 
 
     print(som)
@@ -253,7 +260,7 @@ def findNeighboursAndContours(nbVertices, faces):
 
     return neighbours, contours
 
-def normalize(u):
+def normalize(u, recadre = True):
     length = sqrt(u[0] ** 2 + u[1] ** 2)
     if length == 0:
         return [0, 0]
@@ -261,6 +268,7 @@ def normalize(u):
 
     vect = [u[0]/length, u[1]/length]
 
-    while vect[0] <= 0 or vect[1] < 0:
-        vect[0], vect[1] = -vect[1], vect[0]
+    if recadre:
+        while vect[0] <= 0 or vect[1] < 0:
+            vect[0], vect[1] = -vect[1], vect[0]
     return vect

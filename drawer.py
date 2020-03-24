@@ -3,12 +3,14 @@
 from tkinter import *
 
 import numpy as np
+import cmath
 
 from random import randint, random
 from parser import parseObj
 from math import cos, sin, sqrt, acos
 from process import findNeighboursAndContours, computeNormalOfContour,\
-computeNormalsOfVertices, propagateConstraints, solveLinearEquationComplex
+computeNormalsOfVertices, propagateConstraints, solveLinearEquationComplex,\
+computeIsoValueLines, normalize, defineBoundary
 
 
 centreX, centreY = 0, 0
@@ -48,26 +50,26 @@ def drawLine(canvas, vertice1, vertice2, color, width):
                     setCoordX(vertice2[0]), setCoordY(vertice2[1]),
                     fill=color, width=width)
 
-def drawNormalVector(canvas, origin, vx, vy, color="blue", width=1, d=20):
-    if (vx == 0 and vy == 0):
+def drawMultipleLines(canvas, line, color="purple", width=3):
+    for i in range(len(line) - 1):
+        drawLine(canvas, line[i], line[i + 1], color, width)
+
+def drawNormalVector(canvas, origin, dz, quadrant, color="red", width=1, d=100):
+    if (dz == 0):
         return
     #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
-
+    #print("cc")
+    v = cmath.rect(1, cmath.phase(dz)/ 4 + quadrant * np.pi/2)
     canvas.create_line(setCoordX(origin[0]), setCoordY(origin[1]),
-                        setCoordX(origin[0]) + vx, setCoordY(origin[1]) - vy,
+                        setCoordX(origin[0]) + d * v.real, setCoordY(origin[1]) - d * v.imag,
                         fill=color, width=width)
 
-def drawConstraint(canvas, origin, vx, vy, color="orange", width=3, d=20):
-
-    if (vx == 0 and vy == 0):
-        vx = 1
-
-    angle = acos(vx)
-
-    vx *= d
-    vy *= d
+def drawFrameField(canvas, origin, dz, color="orange", width=3, d=20):
 
     #PI = 3.14159
+
+    dx = cos(cmath.phase(dz) / 4)
+    dy = sin(cmath.phase(dz) / 4)
 
     #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
     #red = int(max(0, 255* 2/PI * angle))
@@ -75,13 +77,13 @@ def drawConstraint(canvas, origin, vx, vy, color="orange", width=3, d=20):
     #blue = 0 #if int(max(0, 3/PI * (angle - PI/ 3) * 255 if angle < 3/PI else 255 * (1 - 3/PI * (angle - 2*PI / 3))))
     #color = "#" + '{:02x}'.format(red) + '{:02x}'.format(green)  + '{:02x}'.format(blue)
 
-
-    canvas.create_line(setCoordX(origin[0]) - vx/2, setCoordY(origin[1]) + vy/2,
-                        setCoordX(origin[0]) + vx/2, setCoordY(origin[1]) - vy/2,
+    #print(dz, setCoordX(origin[0]) -dx * d/2)
+    canvas.create_line(setCoordX(origin[0]) - dx * d/2, setCoordY(origin[1]) + dy * d/2,
+                        setCoordX(origin[0]) + dx * d/2, setCoordY(origin[1]) - dy * d/2,
                         fill=color, width=width)
 
-    canvas.create_line(setCoordX(origin[0]) + vy/2, setCoordY(origin[1]) + vx/2,
-                        setCoordX(origin[0]) - vy/2, setCoordY(origin[1]) - vx/2,
+    canvas.create_line(setCoordX(origin[0]) + dy * d/2, setCoordY(origin[1]) + dx * d/2,
+                        setCoordX(origin[0]) - dy * d/2, setCoordY(origin[1]) - dx * d/2,
                         fill=color, width=width)
 
 
@@ -105,8 +107,7 @@ def drawObj(filename):
 
     neighbours, contours = findNeighboursAndContours(len(vertices), faces)
 
-    normals = computeNormalsOfVertices(vertices, neighbours, contours, d=100)
-
+    dz, quadrants = computeNormalsOfVertices(vertices, neighbours, contours, d=100)
 
     canvas = Canvas(master,
            width=canvas_width,
@@ -119,10 +120,12 @@ def drawObj(filename):
     show_triangles = True
     show_normal_vectors_segments_contour = False
     show_normal_vectors_vertices_contour = False
-    show_contour = True
-    show_links_between_vertices = True
-    show_random_1ring = True
+    show_contour = False
+    show_links_between_vertices = False
+    show_random_1ring = False
     show_constraints = False
+    show_frame_fields = False
+    show_isovaluelines = True
 
     if show_triangles:
         for face in faces:
@@ -151,24 +154,31 @@ def drawObj(filename):
         for j in neighbours[random_id]:
             drawLine(canvas, vertices[random_id], vertices[j], "yellow", 2)
 
-    if show_normal_vectors_vertices_contour:
-        for i in range(len(vertices)):
-            drawNormalVector(canvas, vertices[i], normals[i][0], normals[i][1])
 
     #propagateConstraints(normals, neighbours)
 
-    if show_constraints:
+    #if show_constraints:
+    #    for i in range(len(vertices)):
+    #        drawConstraint(canvas, vertices[i], z[i])
+    idsInside, idsBoundary = defineBoundary(dz)
+
+    if show_normal_vectors_vertices_contour:
         for i in range(len(vertices)):
-            drawConstraint(canvas, vertices[i], normals[i][0], normals[i][1])
-
-    solveLinearEquationComplex(normals, neighbours)
-
-    for i in range(len(vertices)):
-        drawConstraint(canvas, vertices[i], normals[i][0], normals[i][1])
+            if i in idsBoundary:
+                drawNormalVector(canvas, vertices[i], dz[i], quadrants[i])
+    #print(dz)
+    dz = solveLinearEquationComplex(dz, neighbours, idsInside, idsBoundary)
+    #print(dz)
+    if show_frame_fields:
+        for i in range(len(vertices)):
+            drawFrameField(canvas, vertices[i], dz[i])
 
     #for vertice in vertices:
     #    drawCross(canvas, vertice, 10, random() * 3.14/2, "orange", 4)
-
-
+    lines = computeIsoValueLines(neighbours, dz, vertices, idsBoundary, quadrants)
+    #print(lines[-1])
+    if show_isovaluelines:
+        for line in lines:
+            drawMultipleLines(canvas, line)
 
     mainloop()
