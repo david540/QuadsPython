@@ -94,7 +94,7 @@ On peut donc obtenir une solution exacte plutôt qu'une solution approchée :
 
 ### Etape 11 : QuadCover 
 
-Decomposition intuitive : on part des sommets du bord, et on suit les lignes de champs (sans se soucier des singularités):
+Decomposition naive : on part des sommets du bord, et on suit les lignes de champs (sans se soucier des singularités):
 
 ![Alt text](/screenshots/exempledecomposition.png?raw=true "Optional Title")
 
