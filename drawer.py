@@ -2,15 +2,14 @@
 
 from tkinter import *
 
-import numpy as np
-import cmath
-
-from random import randint, random
-from parser import parseObj
 from math import cos, sin, sqrt, acos
-from process import findNeighboursAndContours, computeNormalOfContour,\
-computeNormalsOfVertices, propagateConstraints, solveLinearEquationComplex,\
-computeIsoValueLines, normalize, defineBoundary
+
+import numpy as np
+from normals import computeNormalOfContourComplex
+from process import getMiddleOfVertice
+import cmath
+import colorsys
+from itertools import permutations, combinations
 
 
 centreX, centreY = 0, 0
@@ -64,6 +63,20 @@ def drawNormalVector(canvas, origin, dz, quadrant, color="red", width=1, d=100):
                         setCoordX(origin[0]) + d * v.real, setCoordY(origin[1]) - d * v.imag,
                         fill=color, width=width)
 
+
+def drawField(canvas, origin, v, color="red", width=2, d=20):
+    if (v == 0):
+        return
+    #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
+    #print("cc")
+    #v = cmath.rect(1, cmath.phase(dz))
+    canvas.create_line(setCoordX(origin[0]), setCoordY(origin[1]),
+                        setCoordX(origin[0]) + d * v.real, setCoordY(origin[1]) - d * v.imag,
+                        fill=color, width=width)
+
+def drawSquare(canvas, origin, c, color="yellow"):
+    canvas.create_rectangle(setCoordX(origin[0]) - c, setCoordY(origin[1]) - c, setCoordX(origin[0]) + c, setCoordY(origin[1]) + c, fill=color)
+
 def drawFrameField(canvas, origin, dz, color="orange", width=3, d=20):
 
     #PI = 3.14159
@@ -95,19 +108,82 @@ def setCoordY(curY):
     #return centreY - curY * scale
     return canvas_height - (curY - centreY) / scale
 
-def drawObj(filename):
+def drawScalarField(canvas, u, v, faces, vertices):
+    m = max([max(u), max(v)]) + 0.1
+    variance = 1
+    for t in range(len(faces)):
+        center = [sum([vertices[n - 1][j] for n in faces[t]]) / 3 for j in range(2)]
+
+        i, j, k = faces[t][0]-1, faces[t][1]-1, faces[t][2]-1
+        centerij = [(vertices[i][coord] + vertices[j][coord]) / 2 for coord in range(2)]
+        centerjk = [(vertices[j][coord] + vertices[k][coord]) / 2 for coord in range(2)]
+        centerki = [(vertices[k][coord] + vertices[i][coord]) / 2 for coord in range(2)]
+        rgb = colorsys.hsv_to_rgb((u[3*t]%(m/variance)) / (m/variance), 1, 1)
+        color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
+        canvas.create_polygon(setCoordX(vertices[i][0]), setCoordY(vertices[i][1]),
+                            setCoordX(centerij[0]), setCoordY(centerij[1]),
+                            setCoordX(centerki[0]), setCoordY(centerki[1]), fill=color)
+        rgb = colorsys.hsv_to_rgb((u[3*t + 1]%(m/variance)) / (m/variance), 1, 1)
+        color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
+        canvas.create_polygon(setCoordX(vertices[j][0]), setCoordY(vertices[j][1]),
+                            setCoordX(centerij[0]), setCoordY(centerij[1]),
+                            setCoordX(centerjk[0]), setCoordY(centerjk[1]), fill=color)
+        rgb = colorsys.hsv_to_rgb((u[3*t + 2]%(m/variance)) / (m/variance), 1, 1)
+        color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
+        canvas.create_polygon(setCoordX(vertices[k][0]), setCoordY(vertices[k][1]),
+                            setCoordX(centerjk[0]), setCoordY(centerjk[1]),
+                            setCoordX(centerki[0]), setCoordY(centerki[1]), fill=color)
+        rgb = colorsys.hsv_to_rgb(sum([(u[3*t + indice]%(m/variance)) / (m/variance) for indice in range(3)]) / 3, 1, 1)
+        #rgb = colorsys.hsv_to_rgb((u[3*t]%(m/variance)) / (m/variance), 1, 1)
+        color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
+        canvas.create_polygon(setCoordX(centerjk[0]), setCoordY(centerjk[1]),
+                            setCoordX(centerij[0]), setCoordY(centerij[1]),
+                            setCoordX(centerki[0]), setCoordY(centerki[1]), fill=color)
+
+
+            #drawSquare(canvas, vertices[faces[t][k] - 1], 8, color= color)
+
+def drawScalarFieldMiddleTriangle(canvas, u, faces):
+    m = max(u)
+    for i in range(len(faces)):
+        center = [sum([vertices[n - 1][j] for n in faces[i]]) / 3 for j in range(2)]
+        rgb = colorsys.hsv_to_rgb(u[i]/m, 1, 1)
+        color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
+        drawSquare(canvas, center, 8, color= color)
+
+def drawNormalVectorSegm(canvas, origin, z, d=100, color="red", width=1):
+    if (z == 0):
+        return
+    #u = vecteur P2 - P1, v = vecteur normal à u et orienté du côté opposé au point P3 (pour sortir du contour)
+    #print("cc")
+    #v = cmath.rect(1, cmath.phase(dz)/ 4 + quadrant * np.pi/2)
+    canvas.create_line(setCoordX(origin[0]), setCoordY(origin[1]),
+                        setCoordX(origin[0]) + d * z.real, setCoordY(origin[1]) - d * z.imag,
+                        fill=color, width=width)
+
+
+def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
+    idsBoundary, singularities, u, v, a, b):
+
 
     master = Tk()
 
     master.title("Quads")
 
-    vertices, textureCoord, normals, faces = parseObj(filename)
+    show_triangles = True
+    show_normal_vectors_segments_contour = False
+    show_normal_vectors_vertices_contour = False
+    show_normal_vectors_faces = False
+    show_contour = True
+    show_links_between_vertices = True
+    show_random_1ring = False
+    show_frame_fields = True
+    show_isovaluelines = False
+    show_vector_fields = True
 
     initGlobalVariables(vertices)
-
-    neighbours, contours = findNeighboursAndContours(len(vertices), faces)
-
-    dz, quadrants = computeNormalsOfVertices(vertices, neighbours, contours, d=100)
+    xmin, ymin, zmin = [int(t) - 1 for t in min(vertices)]
+    xmax, ymax, zmax = [int(t) + 1 for t in max(vertices)]
 
     canvas = Canvas(master,
            width=canvas_width,
@@ -116,38 +192,31 @@ def drawObj(filename):
 
     canvas.create_rectangle(0, 0, canvas_width, canvas_height, fill= "white")
 
-
-    show_triangles = True
-    show_normal_vectors_segments_contour = False
-    show_normal_vectors_vertices_contour = False
-    show_contour = False
-    show_links_between_vertices = False
-    show_random_1ring = False
-    show_constraints = False
-    show_frame_fields = False
-    show_isovaluelines = True
-
     if show_triangles:
         for face in faces:
-            v1, v2, v3 = face[0][0] - 1, face[1][0] - 1, face[2][0] - 1
+            v1, v2, v3 = face[0] - 1, face[1] - 1, face[2] - 1
             canvas.create_polygon(setCoordX(vertices[v1][0]), setCoordY(vertices[v1][1]),
                                 setCoordX(vertices[v2][0]), setCoordY(vertices[v2][1]),
                                 setCoordX(vertices[v3][0]), setCoordY(vertices[v3][1]))
 
-    for i in range(len(vertices)):
-        for j in neighbours[i]:
-            if j < i:
-                continue
+    print(len(quadrants), len(faces))
+    for n, face in enumerate(faces):
+        for i, j, k in permutations(face, 3):
+            i, j, k = i - 1, j - 1, k - 1
             key = i, j
             if key in contours:
                 if show_normal_vectors_segments_contour:
-                    vmid, vx, vy = computeNormalOfContour(vertices[i], vertices[j], vertices[contours[key][0]])
-                    drawNormalVector(canvas, vmid, vx, vy)
+                    zv = computeNormalOfContourComplex(vertices[i], vertices[j], vertices[k])
+                    #drawNormalVectorSegm(canvas, getMiddleOfVertice(vertices[i], vertices[j]), zv,)
+
+                    drawNormalVector(canvas, getMiddleOfVertice(vertices[i], vertices[j]), dz[n], quadrants[n])
                 if show_contour:
                     drawLine(canvas, vertices[i], vertices[j], "green", 5)
-            else:
-                if show_links_between_vertices:
-                    drawLine(canvas, vertices[i], vertices[j], "grey", 1)
+            #else:
+            #    if show_links_between_vertices:
+            #        drawLine(canvas, vertices[i], vertices[j], "grey", 1)
+
+
 
     if show_random_1ring :
         random_id = randint(0, len(vertices))
@@ -160,25 +229,56 @@ def drawObj(filename):
     #if show_constraints:
     #    for i in range(len(vertices)):
     #        drawConstraint(canvas, vertices[i], z[i])
-    idsInside, idsBoundary = defineBoundary(dz)
 
     if show_normal_vectors_vertices_contour:
         for i in range(len(vertices)):
             if i in idsBoundary:
                 drawNormalVector(canvas, vertices[i], dz[i], quadrants[i])
-    #print(dz)
-    dz = solveLinearEquationComplex(dz, neighbours, idsInside, idsBoundary)
-    #print(dz)
-    if show_frame_fields:
-        for i in range(len(vertices)):
-            drawFrameField(canvas, vertices[i], dz[i])
 
-    #for vertice in vertices:
-    #    drawCross(canvas, vertice, 10, random() * 3.14/2, "orange", 4)
-    lines = computeIsoValueLines(neighbours, dz, vertices, idsBoundary, quadrants)
-    #print(lines[-1])
+    if show_normal_vectors_faces:
+        for i in range(len(faces)):
+            if i in idsBoundary:
+                drawNormalVector(canvas, faces[i], dz[i], quadrants[i])
+
+
     if show_isovaluelines:
+        lines = computeIsoValueLinesRemake(neighbours, dz, vertices, idsBoundary, quadrants)
         for line in lines:
             drawMultipleLines(canvas, line)
+
+
+
+    #if show_triangles and False:
+
+
+    if show_frame_fields:
+        for i in range(len(faces)):
+            #print([n for n in faces[i]])
+            center = [sum([vertices[n - 1][j] for n in faces[i]]) / 3 for j in range(2)]
+            drawFrameField(canvas, center, dz[i], d=10, width=2)
+
+    #print(v)
+    drawScalarField(canvas, u, v, faces, vertices)
+    #drawScalarFieldMiddleTriangle(canvas, u, faces)
+
+    for n, face in enumerate(faces):
+        for i, j, k in permutations(face, 3):
+            i, j, k = i- 1, j-1, k-1
+            if show_links_between_vertices:
+                drawLine(canvas, vertices[i], vertices[j], "grey", 1)
+    if show_vector_fields:
+        for i in range(len(faces)):
+            center = [sum([vertices[n - 1][j] for n in faces[i]]) / 3 for j in range(2)]
+            drawField(canvas, center, a[i], d=10)
+            drawField(canvas, center, b[i], d=10, color="orange")
+
+
+    if False:
+        for s1, s2 in combinations(singularities, 2):
+            v1 = faces[s1[0]][s1[2]] - 1
+            v2 = faces[s2[0]][s2[2]] - 1
+            print(v2, len(neighbours))
+            if v1 in neighbours[v2]:
+                drawLine(canvas, vertices[v1], vertices[v2], "green", 5)
 
     mainloop()
