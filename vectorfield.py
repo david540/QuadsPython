@@ -33,23 +33,20 @@ def rotateFieldAboveXvalue(mean_x_value, a, b, faces, vertices):
 
 
 
-def getVectorFields(dz, neighbours):
+def getVectorFields(dz, neighbours, faces):
     u, v = [0 for i in range(len(dz))], [0 for i in range(len(dz))]
     if len(dz) == 0:
         return u, v
     mean_value = sum(dz) / len(dz)
     actual_angle = cmath.phase(mean_value) / 4
     alreadyDone = [False for i in range(len(dz))]
+    arbreCouvrant = []
     idAct = 0
     compteur = 0
     idToTest = [[0, 0]]
     maxi = 0
     while compteur < len(neighbours):
         idAct, actual_angle = idToTest[0]
-        if alreadyDone[idAct] == True:
-            del idToTest[0]
-            continue
-        alreadyDone[idAct] = True
         angle = cmath.phase(dz[idAct]) / 4
         if abs(angle) > abs(maxi):
             maxi = angle
@@ -61,9 +58,47 @@ def getVectorFields(dz, neighbours):
         u[idAct] = cmath.rect(1, angle)
         v[idAct] = cmath.rect(1, (angle + np.pi/2))
         for n in neighbours[idAct]:
+            if alreadyDone[n]:
+                continue
+
+            alreadyDone[n] = True
+            if n == 1:
+                print(idAct, n)
             idToTest.append([n, angle])
+            idCommonEdge = []
+            for i in faces[n]:
+                if i in faces[idAct]:
+                    idCommonEdge.append(i - 1)
+            arbreCouvrant.append(tuple(sorted(idCommonEdge)))
         #actual_angle = angle
         del idToTest[0]
         compteur+= 1
 
-    return u, v
+    return u, v, arbreCouvrant
+
+def zipArbreCouvrant(arbreCouvrant, neighbours):
+    pileVertice = []
+    count = [0 for i in range(len(neighbours))]
+    for i in range(len(neighbours)):
+        for n in neighbours[i]:
+            key = min(i, n), max(i, n)
+            if key not in arbreCouvrant:
+                count[i] += 1
+        if count[i] == 1:
+            pileVertice.append(i)
+    while len(pileVertice) > 0:
+        curVert = pileVertice[0]
+        if count[curVert] == 0:
+            del(pileVertice[0])
+            continue
+        for n in neighbours[curVert]:
+            key = min(curVert, n), max(curVert, n)
+            if key not in arbreCouvrant:
+                arbreCouvrant.append(key)
+                count[curVert] -= 1
+                if count[curVert] != 0:
+                    print("ERROR ZIP 940", count[curVert])
+                del(pileVertice[0])
+                count[n] -= 1
+                if count[n] == 1:
+                    pileVertice.append(n)

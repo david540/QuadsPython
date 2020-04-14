@@ -8,7 +8,7 @@ import cmath
 from process import *
 
 
-def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, singularities):
+def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
 
     A = []
     b = []
@@ -20,51 +20,85 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, si
     s = set()
     ids = []
     nbTriangles = len(faces)
-    for t in range(nbTriangles):
-        for i in range(len(faces[t])):
-            s.add(ds.find(3 * t + i))
-    for t in range(nbTriangles):
-        for i in range(len(faces[t])):
-            for idV, v in enumerate(s):
-                if ds.find(3 * t + i) == v:
-                    ids.append(idV)
-                    break
+    nbCoinsTriangles = 3 * nbTriangles
+    nbVertices = len(vertices)
+    #for numCoord in range(2):
+#    for t in range(nbTriangles):
+#        for i in range(len(faces[t])):
+#            s.add(ds.find(numCoord * nbCoinsTriangles + 3 * t + i))
+    #for numCoord in range(2):
+#    for t in range(nbTriangles):
+#        for i in range(len(faces[t])):
+#            for idV, v in enumerate(s):
+#                if ds.find(numCoord//2 * nbCoinsTriangles + 3 * t + i) == v:
+#                    ids.append(idV)
+#                    break
 
-    if len(ids) != 3 * len(faces):
-        print("ERROR 30304")
+    #if len(ids) != 4 * 3 * len(faces):
+    #    print("ERROR 30304")
 
-    lenS = len(s)
+    signs = ds.getSigns()
 
-    for t in range(nbTriangles):
-        for k, m in permutations(range(len(faces[t])), 2):
-            i = faces[t][k] - 1
-            A.append([0 for _ in range(2 * lenS)])
-            if i == r:
-                A[-1][i] = C
-                b.append([0])
-                A.append([0 for _ in range(2 * lenS)])
-                A[-1][lenS + i] = C
-                b.append([0])
-                continue
-            j = faces[t][m] - 1
-            z = complex(vertices[i][0] - vertices[j][0], vertices[i][1] - vertices[j][1])
-            if z == 0:
-                print("ERROR 49430")
-                continue
-            somZ = du[t] / (z/abs(z))
-            #b.append([0])
-            reference = ds.find(3 * t + m)
-            A[-1][ids[3 * t + m]] = -1
-            A[-1][ids[3 * t + k]] = 1
-            b.append([sqrt(dist(vertices[i], vertices[j])) * somZ.real])
+    setsId = ds.getSetsId()
 
-            A.append([0 for _ in range(2 * lenS)])
-            somZ = dv[t] / (z/abs(z))
-            A[-1][lenS + ids[3 * t + m]] = -1
-            A[-1][lenS + ids[3 * t + k]] = 1
-            b.append([sqrt(dist(vertices[i], vertices[j])) * somZ.real])
+    lenS = ds.getNumSets()
+    #lenS = max(setsId) + 1
+    if lenS != 2*nbVertices:
+        print("ERROR 340405 : ", lenS, nbVertices)
 
+    alreadyDone = [[[False for j in range(len(vertices))] for i in range(len(vertices))] for numCoord in range(2)]
+
+    stabilized = [False for numCoord in range(2)]
+    parentIds = ds.getParentIds()
+    for numCoord in range(2):
+        for t in range(nbTriangles):
+            for k, m in permutations(range(len(faces[t])), 2):
+                i = faces[t][k] - 1
+                j = faces[t][m] - 1
+                if alreadyDone[numCoord][i][j]:
+                    continue
+                alreadyDone[numCoord][i][j], alreadyDone[numCoord][j][i] = True, True
+
+                if i == r and not stabilized[numCoord]:
+                    stabilized[numCoord] = True
+                    A.append([0 for _ in range(lenS)])
+                    id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
+                    A[-1][id1] = C
+                    b.append([0])
+
+                A.append([0 for _ in range(lenS)])
+                z = complex(vertices[j][0] - vertices[i][0], vertices[j][1] - vertices[i][1])
+                if z == 0:
+                    print("ERROR 49430")
+                    continue
+
+                id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
+                id2 = setsId[numCoord * nbCoinsTriangles + 3 * t + m]
+                if numCoord == 0:
+                    somZ = du[t] / (z/abs(z))
+                    #somZ = cmath.rect(1, np.pi/4) / (z/abs(z))
+                else:
+                    somZ = dv[t] / (z/abs(z))
+                    #somZ = cmath.rect(1, 3 * np.pi/4) / (z/abs(z))
+
+                #b.append([0])
+                A[-1][id1] = -1
+                A[-1][id2] = 1
+                #if id1 == 2 and id2 == 3:
+                #print(id1, id2, t, k, m, i, j, sqrt(dist(vertices[i], vertices[j])), vertices[i], vertices[j], somZ.real)
+                #print(id1, id2, parentIds[id1], parentIds[id2], numCoord)
+                #print(id1, id2, t, parentIds[id1] // 3, somZ, numCoord)
+                #if id1 == 116 and id2 == 106:
+                #    print(id1, id2, sqrt(dist(vertices[i], vertices[j])) * somZ.real, i, j, t, du[t], dv[t], z)
+                #    print(t, parentIds[t] // 3)
+
+                b.append([sqrt(dist(vertices[i], vertices[j])) * somZ.real])
+
+
+    #printSystemOfEquation(A, b)
+    #print(len(A), len(vertices))
     #print("gestion des singularites")
+
     #for t, n, k, m, val in singularities:
     #    if val == 0:
     #        print("ERROR 430534")
@@ -103,22 +137,32 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, si
     X = np.linalg.inv(AtA) * Atb
 
     sol = X.transpose().tolist()[0]
-
-    mini = min(sol)
+    #print(sol)
+    mini = [sol[0], sol[-1]]
+    middle = len(sol)//2
     for i in range(len(sol)):
-        sol[i] -= mini
+        if i < middle and sol[i] < mini[0]:
+            mini[0] = sol[i]
+        elif i >= middle and sol[i] < mini[1]:
+            mini[1] = sol[i]
+    for i in range(len(sol)):
+        if i < middle:
+            sol[i] -= mini[0]
+        else:
+            sol[i] -= mini[1]
 
     u_coins_triangles = [0 for i in range(3 * len(faces))]
     v_coins_triangles = [0 for i in range(3 * len(faces))]
+    #for numCoord in range(4):
     for t in range(len(faces)):
         for k in range(len(faces[t])):
-            vref = ds.find(3 * t + k)
-            for i, v in enumerate(s):
-                if v == vref:
-                    u_coins_triangles[3 * t + k] = sol[i]
-                    v_coins_triangles[3 * t + k] = sol[i + lenS]
-                    break
+            id1 = setsId[3 * t + k]
+            id2 = setsId[nbCoinsTriangles + 3 * t + k]
+            u_coins_triangles[3 * t + k] = sol[id1]
+            v_coins_triangles[3 * t + k] = sol[id2]
+            #print(t, k, id1, id2, sol[id1], sol[id2])
     print("champs u et v calculés")
+    #print(v_coins_triangles)
     return u_coins_triangles, v_coins_triangles
 
 def scalarFieldMiddleTriangle(faces, du, vertices):
@@ -171,6 +215,15 @@ def scalarFieldMiddleTriangle(faces, du, vertices):
         u[i] = sol[i] - mini
 
     return u
+
+
+def printSystemOfEquation(A, b):
+    for i in range(len(A)):
+        for j in range(len(A[i])):
+            if A[i][j] != 0:
+                print("+",A[i][j],"X[", j,"]",end=" ")
+
+        print(" =", b[i])
 
 def naiveScalarFieldMiddleTriangle(faces, du, vertices):
     A = []

@@ -109,7 +109,7 @@ def setCoordY(curY):
     return canvas_height - (curY - centreY) / scale
 
 def drawScalarField(canvas, u, v, faces, vertices):
-    m = max([max(u), max(v)]) + 0.1
+    m = max([max(u), max(v)])*(1.001)
     variance = 1
     for t in range(len(faces)):
         center = [sum([vertices[n - 1][j] for n in faces[t]]) / 3 for j in range(2)]
@@ -163,7 +163,7 @@ def drawNormalVectorSegm(canvas, origin, z, d=100, color="red", width=1):
 
 
 def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
-    idsBoundary, singularities, u, v, a, b):
+    idsBoundary, singularities, u, v, a, b, arbreCouvrant):
 
 
     master = Tk()
@@ -174,12 +174,14 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
     show_normal_vectors_segments_contour = False
     show_normal_vectors_vertices_contour = False
     show_normal_vectors_faces = False
-    show_contour = True
+    show_scalar_field = False
+    show_contour = False
     show_links_between_vertices = True
     show_random_1ring = False
-    show_frame_fields = True
+    show_frame_fields = False
     show_isovaluelines = False
-    show_vector_fields = True
+    show_vector_fields = False
+    show_arbre_couvrant = True
 
     initGlobalVariables(vertices)
     xmin, ymin, zmin = [int(t) - 1 for t in min(vertices)]
@@ -199,7 +201,6 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
                                 setCoordX(vertices[v2][0]), setCoordY(vertices[v2][1]),
                                 setCoordX(vertices[v3][0]), setCoordY(vertices[v3][1]))
 
-    print(len(quadrants), len(faces))
     for n, face in enumerate(faces):
         for i, j, k in permutations(face, 3):
             i, j, k = i - 1, j - 1, k - 1
@@ -258,21 +259,24 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
             drawFrameField(canvas, center, dz[i], d=10, width=2)
 
     #print(v)
-    drawScalarField(canvas, u, v, faces, vertices)
+    if show_scalar_field:
+        drawScalarField(canvas, u, v, faces, vertices)
     #drawScalarFieldMiddleTriangle(canvas, u, faces)
 
     for n, face in enumerate(faces):
         for i, j, k in permutations(face, 3):
             i, j, k = i- 1, j-1, k-1
             if show_links_between_vertices:
-                drawLine(canvas, vertices[i], vertices[j], "grey", 1)
+                drawLine(canvas, vertices[i], vertices[j], "red", 2)
     if show_vector_fields:
         for i in range(len(faces)):
             center = [sum([vertices[n - 1][j] for n in faces[i]]) / 3 for j in range(2)]
             drawField(canvas, center, a[i], d=10)
             drawField(canvas, center, b[i], d=10, color="orange")
 
-
+    if show_arbre_couvrant:
+        for i, j in arbreCouvrant:
+            drawLine(canvas, vertices[i], vertices[j], "green", 2)
     if False:
         for s1, s2 in combinations(singularities, 2):
             v1 = faces[s1[0]][s1[2]] - 1

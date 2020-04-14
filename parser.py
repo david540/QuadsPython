@@ -74,9 +74,9 @@ def findNeighboursAndContours(vertices, faces):
                     listBoundVertices.append(v2)
                 else:
                     commonVertice = v2
-        if count > 2:
+        if count > 3:
             print("ERROR 239959")
-        elif count == 2:
+        elif count == 2 or count == 3:
             if len(listBoundVertices) != 3 or commonVertice == None:
                 print("ERROR 33449")
             center = [sum([vertices[n - 1][j] for n in face]) / 3 for j in range(3)]
