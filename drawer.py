@@ -109,11 +109,10 @@ def setCoordY(curY):
     return canvas_height - (curY - centreY) / scale
 
 def drawScalarField(canvas, u, v, faces, vertices):
-    m = max([max(u), max(v)])*(1.001)
+    m = max(u)*(1.5)
     variance = 1
     for t in range(len(faces)):
         center = [sum([vertices[n - 1][j] for n in faces[t]]) / 3 for j in range(2)]
-
         i, j, k = faces[t][0]-1, faces[t][1]-1, faces[t][2]-1
         centerij = [(vertices[i][coord] + vertices[j][coord]) / 2 for coord in range(2)]
         centerjk = [(vertices[j][coord] + vertices[k][coord]) / 2 for coord in range(2)]
@@ -133,8 +132,9 @@ def drawScalarField(canvas, u, v, faces, vertices):
         canvas.create_polygon(setCoordX(vertices[k][0]), setCoordY(vertices[k][1]),
                             setCoordX(centerjk[0]), setCoordY(centerjk[1]),
                             setCoordX(centerki[0]), setCoordY(centerki[1]), fill=color)
-        rgb = colorsys.hsv_to_rgb(sum([(u[3*t + indice]%(m/variance)) / (m/variance) for indice in range(3)]) / 3, 1, 1)
+        rgb = colorsys.hsv_to_rgb(sum([(u[3*t + indice]) for indice in range(3)]) / 3 % (m/variance) / (m/variance) , 1, 1)
         #rgb = colorsys.hsv_to_rgb((u[3*t]%(m/variance)) / (m/variance), 1, 1)
+
         color = "#" + '{:02x}'.format(int(rgb[0] * 255)) + '{:02x}'.format(int(rgb[1] * 255))  + '{:02x}'.format(int(rgb[2] * 255))
         canvas.create_polygon(setCoordX(centerjk[0]), setCoordY(centerjk[1]),
                             setCoordX(centerij[0]), setCoordY(centerij[1]),
@@ -142,6 +142,21 @@ def drawScalarField(canvas, u, v, faces, vertices):
 
 
             #drawSquare(canvas, vertices[faces[t][k] - 1], 8, color= color)
+
+def drawNumSet(canvas, faces, vertices, ds, c):
+    trouvee = [False for _ in range(ds.getNumSets())]
+    setsId = ds.getSetsId()
+    for t in range(len(faces)):
+        for k in range(3):
+            trouvee[setsId[3 * len(faces) + 3 * t + k]] = True
+            trouvee[setsId[3 * t + k]] = True
+            textValue = str(setsId[c * 3 * len(faces) + 3 * t + k])
+            i = faces[t][k] - 1
+            canvas.create_text(setCoordX(vertices[i][0]), setCoordY(vertices[i][1]), text=textValue)
+
+    for v in trouvee:
+        if v == False:
+            print("ERROR 33945050623")
 
 def drawScalarFieldMiddleTriangle(canvas, u, faces):
     m = max(u)
@@ -163,8 +178,7 @@ def drawNormalVectorSegm(canvas, origin, z, d=100, color="red", width=1):
 
 
 def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
-    idsBoundary, singularities, u, v, a, b, arbreCouvrant):
-
+    idsBoundary, singularities, u, v, a, b, arbreCouvrant, ds):
 
     master = Tk()
 
@@ -174,14 +188,15 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
     show_normal_vectors_segments_contour = False
     show_normal_vectors_vertices_contour = False
     show_normal_vectors_faces = False
-    show_scalar_field = False
+    show_scalar_field = True
     show_contour = False
-    show_links_between_vertices = True
+    show_links_between_vertices = False
     show_random_1ring = False
     show_frame_fields = False
     show_isovaluelines = False
-    show_vector_fields = False
+    show_vector_fields = True
     show_arbre_couvrant = True
+    show_num_sets = True
 
     initGlobalVariables(vertices)
     xmin, ymin, zmin = [int(t) - 1 for t in min(vertices)]
@@ -193,7 +208,7 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
     canvas.pack()
 
     canvas.create_rectangle(0, 0, canvas_width, canvas_height, fill= "white")
-
+    print(len(faces))
     if show_triangles:
         for face in faces:
             v1, v2, v3 = face[0] - 1, face[1] - 1, face[2] - 1
@@ -212,7 +227,7 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
 
                     drawNormalVector(canvas, getMiddleOfVertice(vertices[i], vertices[j]), dz[n], quadrants[n])
                 if show_contour:
-                    drawLine(canvas, vertices[i], vertices[j], "green", 5)
+                    drawLine(canvas, vertices[i], vertices[j], "green", 7)
             #else:
             #    if show_links_between_vertices:
             #        drawLine(canvas, vertices[i], vertices[j], "grey", 1)
@@ -260,29 +275,31 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
 
     #print(v)
     if show_scalar_field:
-        drawScalarField(canvas, u, v, faces, vertices)
+        drawScalarField(canvas, v, u, faces, vertices)
     #drawScalarFieldMiddleTriangle(canvas, u, faces)
 
     for n, face in enumerate(faces):
         for i, j, k in permutations(face, 3):
             i, j, k = i- 1, j-1, k-1
             if show_links_between_vertices:
-                drawLine(canvas, vertices[i], vertices[j], "red", 2)
+                drawLine(canvas, vertices[i], vertices[j], "blue", 2)
     if show_vector_fields:
         for i in range(len(faces)):
             center = [sum([vertices[n - 1][j] for n in faces[i]]) / 3 for j in range(2)]
+
             drawField(canvas, center, a[i], d=10)
             drawField(canvas, center, b[i], d=10, color="orange")
+
 
     if show_arbre_couvrant:
         for i, j in arbreCouvrant:
             drawLine(canvas, vertices[i], vertices[j], "green", 2)
-    if False:
-        for s1, s2 in combinations(singularities, 2):
-            v1 = faces[s1[0]][s1[2]] - 1
-            v2 = faces[s2[0]][s2[2]] - 1
-            print(v2, len(neighbours))
-            if v1 in neighbours[v2]:
-                drawLine(canvas, vertices[v1], vertices[v2], "green", 5)
+    if True:
+        for v in singularities:
+            drawSquare(canvas, vertices[v], 8, color= "red")
+
+
+    if show_num_sets:
+        drawNumSet(canvas, faces, vertices, ds, 0)
 
     mainloop()

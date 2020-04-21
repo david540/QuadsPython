@@ -36,15 +36,18 @@ def main(filename):
 
     print("Calcul des champs vectoriels")
 
+    singularities = []
     a, b = 0, 0
     a, b, arbreCouvrant = getVectorFields(dz, neifaces, faces)
+    print("Zip du maillage")
+    carteIndirection = calculCarteIndirection(vertices, faces)
+    singularities = computeSingularities(faces, dz, vertices, neifaces, carteIndirection)
 
-    print("Calcul des singularites et zip du maillage")
-    singularities = []
-    zipArbreCouvrant(arbreCouvrant, neighbours)
+    #print(singularities)
+    zipArbreCouvrant(arbreCouvrant, neighbours, singularities)
     #print(a, b)
     mean_x_value = (max(vertices)[0] + min(vertices)[0]) / 2
-    for _ in range(1):
+    for _ in range(0):
         rotateFieldAboveXvalue(mean_x_value, a, b, faces, vertices)
     #print(mean_x_value)
     #print(a)
@@ -58,11 +61,13 @@ def main(filename):
 
 
     print("Calcul du disjoint set")
-    ds = setDisjointSet(vertices, faces, neifaces, a)
+    ds, listeCasDecoupe = setDisjointSet(vertices, faces, neifaces, a, b, arbreCouvrant, contours)
+    ds_coupes = setDisjointSetCoupe(vertices, faces, neifaces, arbreCouvrant, ds)
+
 
     print("Calcul des champs scalaires")
     u, v = 0, 0
-    u, v = scalarFieldLinearSystemDisjointSet(faces, a, b, neifaces, ds, vertices)
+    u, v = scalarFieldLinearSystemDisjointSet(faces, a, b, neifaces, ds, vertices, listeCasDecoupe, ds_coupes)
 
     #print(u, v)
 
@@ -72,7 +77,7 @@ def main(filename):
 
     print("Affichage")
     drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
-        idsBoundary, singularities, u, v, a, b, arbreCouvrant)
+        idsBoundary, singularities, v, u, a, b, arbreCouvrant, ds)
 
 
 if __name__ == "__main__":

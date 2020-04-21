@@ -45,7 +45,7 @@ def getVectorFields(dz, neighbours, faces):
     compteur = 0
     idToTest = [[0, 0]]
     maxi = 0
-    while compteur < len(neighbours):
+    while compteur <= len(neighbours):
         idAct, actual_angle = idToTest[0]
         angle = cmath.phase(dz[idAct]) / 4
         if abs(angle) > abs(maxi):
@@ -62,8 +62,6 @@ def getVectorFields(dz, neighbours, faces):
                 continue
 
             alreadyDone[n] = True
-            if n == 1:
-                print(idAct, n)
             idToTest.append([n, angle])
             idCommonEdge = []
             for i in faces[n]:
@@ -76,7 +74,7 @@ def getVectorFields(dz, neighbours, faces):
 
     return u, v, arbreCouvrant
 
-def zipArbreCouvrant(arbreCouvrant, neighbours):
+def zipArbreCouvrant(arbreCouvrant, neighbours, singularities):
     pileVertice = []
     count = [0 for i in range(len(neighbours))]
     for i in range(len(neighbours)):
@@ -88,7 +86,7 @@ def zipArbreCouvrant(arbreCouvrant, neighbours):
             pileVertice.append(i)
     while len(pileVertice) > 0:
         curVert = pileVertice[0]
-        if count[curVert] == 0:
+        if curVert in singularities or count[curVert] == 0:
             del(pileVertice[0])
             continue
         for n in neighbours[curVert]:

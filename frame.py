@@ -45,15 +45,14 @@ def solveLinearEquationTriangleCenter(dz, idsBoundary, facesIdentification, neif
 
     X = np.linalg.inv(A) * b
 
-    dz = X.transpose().tolist()[0]
+    X = X.transpose().tolist()[0]
         #print(X)
     #X = ((np.linalg.inv(A)*b).transpose().tolist()[0])
     #verifJustesse(A, b, X, neighbours, idsBoundary)
     for i in range(len(neifaces)):
         #normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
         #normals[i] = normalize([cos(cmath.phase(X[i]) / 4), sin(cmath.phase(X[i])/ 4)])
-        if dz[i] == 0:
-            dz[i] = X[i, 0]
+        dz[i] = X[i]/abs(X[i])
 
     return dz
 

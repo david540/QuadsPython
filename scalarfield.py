@@ -8,7 +8,7 @@ import cmath
 from process import *
 
 
-def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
+def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, listeCasDecoupe, ds_coupes):
 
     A = []
     b = []
@@ -50,30 +50,33 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
 
     stabilized = [False for numCoord in range(2)]
     parentIds = ds.getParentIds()
+    nbDecoupe = 1 if len(listeCasDecoupe) > 0 else 0
+    #nbDecoupe = 0
     for numCoord in range(2):
         for t in range(nbTriangles):
             for k, m in permutations(range(len(faces[t])), 2):
                 i = faces[t][k] - 1
                 j = faces[t][m] - 1
-                if alreadyDone[numCoord][i][j]:
+
+                id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
+                id2 = setsId[numCoord * nbCoinsTriangles + 3 * t + m]
+                if alreadyDone[numCoord][i][j] or id1 == id2:
                     continue
                 alreadyDone[numCoord][i][j], alreadyDone[numCoord][j][i] = True, True
 
                 if i == r and not stabilized[numCoord]:
                     stabilized[numCoord] = True
-                    A.append([0 for _ in range(lenS)])
+                    A.append([0 for _ in range(lenS + 2*nbDecoupe)])
                     id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
                     A[-1][id1] = C
                     b.append([0])
 
-                A.append([0 for _ in range(lenS)])
+                A.append([0 for _ in range(lenS + 2*nbDecoupe)])
                 z = complex(vertices[j][0] - vertices[i][0], vertices[j][1] - vertices[i][1])
                 if z == 0:
                     print("ERROR 49430")
                     continue
 
-                id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
-                id2 = setsId[numCoord * nbCoinsTriangles + 3 * t + m]
                 if numCoord == 0:
                     somZ = du[t] / (z/abs(z))
                     #somZ = cmath.rect(1, np.pi/4) / (z/abs(z))
@@ -82,8 +85,10 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
                     #somZ = cmath.rect(1, 3 * np.pi/4) / (z/abs(z))
 
                 #b.append([0])
-                A[-1][id1] = -1
-                A[-1][id2] = 1
+                sign1 = -1 if signs[3 * t + k] == True else 1
+                sign2 = 1 if signs[3 * t + m] == True else -1
+                A[-1][id1] = sign1
+                A[-1][id2] = sign2
                 #if id1 == 2 and id2 == 3:
                 #print(id1, id2, t, k, m, i, j, sqrt(dist(vertices[i], vertices[j])), vertices[i], vertices[j], somZ.real)
                 #print(id1, id2, parentIds[id1], parentIds[id2], numCoord)
@@ -98,8 +103,27 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
     #printSystemOfEquation(A, b)
     #print(len(A), len(vertices))
     #print("gestion des singularites")
-
-    #for t, n, k, m, val in singularities:
+    signs_coupe = ds_coupes.getSigns()
+    #print(signs_coupe)
+    parentIds_coupes = ds_coupes.getParentIds()
+    print("nbDecoupe : ", nbDecoupe)
+    if nbDecoupe > 0:
+        #print(listeCasDecoupe)
+        for i, k, m, t, n in listeCasDecoupe:
+            for numCoord in range(2):
+                A.append([0 for _ in range(lenS + nbDecoupe * 2)])
+                id1 = setsId[numCoord * nbCoinsTriangles + 3 * t + k]
+                id2 = setsId[numCoord * nbCoinsTriangles + 3 * n + m]
+                value = du[t] if numCoord == 0 else dv[t]
+                sign1 = 1 if signs_coupe[id1] == True else -1
+                sign2 = 1 if signs_coupe[id2] == True else -1
+                if sign1 == sign2:
+                    print("scalarfield.py ERROR 0442393", sign1, sign2)
+                A[-1][id1] = sign1
+                A[-1][id2] = sign2
+                A[-1][lenS + numCoord] = 1
+                #print(id1, id2)
+                b.append([0])
     #    if val == 0:
     #        print("ERROR 430534")
     #    elif abs(val) == 1:
@@ -128,28 +152,17 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
     #        b.append([0])
 
     print("resolution du système linéaire")
-    A = np.matrix(A)
-    b = np.matrix(b)
+    #A = np.matrix(A)
+    #b = np.matrix(b)
 
-    AtA = A.transpose() * A
-    Atb = A.transpose() * b
+    #AtA = A.transpose() * A
+    #Atb = A.transpose() * b
 
-    X = np.linalg.inv(AtA) * Atb
+    #X = np.linalg.inv(AtA) * Atb
+    X = np.linalg.lstsq(A, b)[0]
 
-    sol = X.transpose().tolist()[0]
+    sol = X.transpose().tolist()[0][:lenS]
     #print(sol)
-    mini = [sol[0], sol[-1]]
-    middle = len(sol)//2
-    for i in range(len(sol)):
-        if i < middle and sol[i] < mini[0]:
-            mini[0] = sol[i]
-        elif i >= middle and sol[i] < mini[1]:
-            mini[1] = sol[i]
-    for i in range(len(sol)):
-        if i < middle:
-            sol[i] -= mini[0]
-        else:
-            sol[i] -= mini[1]
 
     u_coins_triangles = [0 for i in range(3 * len(faces))]
     v_coins_triangles = [0 for i in range(3 * len(faces))]
@@ -158,10 +171,22 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices):
         for k in range(len(faces[t])):
             id1 = setsId[3 * t + k]
             id2 = setsId[nbCoinsTriangles + 3 * t + k]
-            u_coins_triangles[3 * t + k] = sol[id1]
-            v_coins_triangles[3 * t + k] = sol[id2]
+            sign1 = 1 if signs[3 * t + k] == True else -1
+            sign2 = 1 if signs[nbCoinsTriangles + 3 * t + k] == True else -1
+            u_coins_triangles[3 * t + k] = sign1 * sol[id1]
+            v_coins_triangles[3 * t + k] = sign2 * sol[id2]
+
+            if t ==  len(faces) - 3:
+                print(u_coins_triangles[3 * t + k], v_coins_triangles[3 * t + k])
             #print(t, k, id1, id2, sol[id1], sol[id2])
     print("champs u et v calculés")
+
+    minu = min(u_coins_triangles)
+    minv = min(v_coins_triangles)
+    for i in range(len(u_coins_triangles)) :
+        u_coins_triangles[i] -= minu
+        v_coins_triangles[i] -= minv
+    #print(v_coins_triangles)
     #print(v_coins_triangles)
     return u_coins_triangles, v_coins_triangles
 

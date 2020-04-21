@@ -1,5 +1,7 @@
 import numpy as np
 import cmath
+from process import *
+from itertools import permutations, combinations
 
 class DisjointSetWithSign:
 
@@ -18,9 +20,9 @@ class DisjointSetWithSign:
         self.connectToRoot(a)
         self.connectToRoot(b)
 
-        self.m_ids[self.m_ids[a]] = self.m_ids[b]
-
         self.m_signs[self.m_ids[a]] = ((self.m_signs[a] == self.m_signs[b]) == sameSign)
+
+        self.m_ids[self.m_ids[a]] = self.m_ids[b]
 
     def getNumSets(self):
 
@@ -88,18 +90,29 @@ class DisjointSetWithSign:
 
             self.m_ids[i] = rootId
 
-            self.m_signs[i] = self.m_signs[i] == self.m_signs[rootId]
+            self.m_signs[i] = self.m_signs[i] == self.m_signs[newI]
 
             i=newI
 
+def setDisjointSet(vertices, faces, neifaces, a, b, arbreCouvrant, contours):
 
-def setDisjointSet(vertices, faces, neifaces, a):
     nbTriangles = len(faces)
     nbCoinsTriangles = 3 * nbTriangles
     ds = DisjointSetWithSign(2 * nbCoinsTriangles)
+    listeCasDecoupe = []
+    positiveSide = []
     for t in range(nbTriangles):
         for n in neifaces[t]:
             ids = []
+            listVId = findCommonVertices(faces[t], faces[n])
+            key = tuple(sorted([listVId[0][0], listVId[1][0]]))
+            if key not in arbreCouvrant:
+                for c in range(2):
+                    listVId[c].append(t)
+                    listVId[c].append(n)
+                    if t < n:
+                        listeCasDecoupe.append(listVId[c])
+                continue
             for i in range(len(faces[t])):
                 for j in range(len(faces[n])):
                     if faces[t][i] - 1 == faces[n][j] - 1:
@@ -117,6 +130,7 @@ def setDisjointSet(vertices, faces, neifaces, a):
                             val -= 1
                         #singularities.append(tuple([t, n, i, j, val]))
                         ids.append([i, j, val])
+
             #if len(ids) != 2:
             #    print("ERROR 504304")
                 #return
@@ -124,25 +138,73 @@ def setDisjointSet(vertices, faces, neifaces, a):
 
             for k in range(len(ids)):
                 val = ids[k][2]
-                #val = 0
                 idG, idD = 3 * t + ids[k][0], 3 * n + ids[k][1]
                 if(faces[t][ids[k][0]] != faces[n][ids[k][1]]):
                     print("oh non pas comme ça")
                 if val < 0:
                     idG, idD = idD, idG
                 uG, uD, vG, vD = idG, idD, nbCoinsTriangles + idG, nbCoinsTriangles + idD
+                #print(abs(val))
                 if val == 0:
                     ds.merge(uG, uD, True)
                     ds.merge(vG, vD, True)
                     #print(uG, uD, ds.getParentIds()[uG], ds.getParentIds()[uD])
 
-                if abs(val) == 1:
+                elif abs(val) == 1:
+                    #print("ok")
                     ds.merge(uG, vD, False)
                     ds.merge(vG, uD, True)
 
-                if abs(val) == 2:
+                elif abs(val) == 2:
+                    #print('ok')
                     ds.merge(uG, uD, False)
                     ds.merge(vG, vD, False)
 
+    for t in range(nbTriangles):
+        for k, m in combinations(range(len(faces[t])), 2):
+            if m == k:
+                continue
+            v1, v2 = min(faces[t][k] - 1, faces[t][m] - 1), max(faces[t][k] - 1, faces[t][m] - 1)
+            dist = sqrt((vertices[v2][0] - vertices[v1][0]) ** 2 + (vertices[v2][1] - vertices[v1][1]) ** 2)
+            if (v1, v2) in contours:
+                if abs(a[t].real * (vertices[v2][0] - vertices[v1][0]) / dist + a[t].imag * (vertices[v2][1] - vertices[v1][1])) / dist < 0.2:
+                    #aaa = 0
+                    ds.merge(3 * t + k, 3 * t + m, True)
+                elif abs(b[t].real * (vertices[v2][0] - vertices[v1][0]) / dist + b[t].imag * (vertices[v2][1] - vertices[v1][1]) / dist) < 0.2:
+                    #aaa = 0
+                    ds.merge(nbCoinsTriangles + 3 * t + k, nbCoinsTriangles + 3 * t + m, True)
+                else:
+                    print(t, a[t].real, vertices[v2][0] - vertices[v1][0])
+                    print("ERROR 320492304")
+
+    setsId = ds.getSetsId()
     print("fin ds")
-    return ds
+
+
+    return ds, listeCasDecoupe
+
+
+def setDisjointSetCoupe(vertices, faces, neifaces, arbreCouvrant, ds):
+    nbTriangles = len(faces)
+    nbCoinsTriangles = 3 * nbTriangles
+    ds_coupe = DisjointSetWithSign(ds.getNumSets())
+    alreadyDone = [False for t in range(nbTriangles)]
+    setsId = ds.getSetsId()
+    for numCoord in range(2):
+        for t in range(nbTriangles):
+            for n in neifaces[t]:
+                listVId = findCommonVertices(faces[t], faces[n])
+                key = tuple(sorted([listVId[0][0], listVId[1][0]]))
+                if key not in arbreCouvrant:
+                    for i, k, m in listVId:
+                        ds_coupe.merge(setsId[numCoord * nbCoinsTriangles + 3 * t + k], setsId[numCoord * nbCoinsTriangles + 3 * n + m], False)
+                        ds_coupe.getSetsId()
+
+                        #print(ds_coupe.getSigns()[setsId[numCoord * nbCoinsTriangles + 3 * t + k]],
+                        #ds_coupe.getSigns()[setsId[numCoord * nbCoinsTriangles + 3 * n + m]])
+                    ds_coupe.merge(setsId[numCoord * nbCoinsTriangles + 3 * t + listVId[0][1]],
+                    setsId[numCoord * nbCoinsTriangles + 3 * t + listVId[1][1]], True)
+                    ds_coupe.getSetsId()
+                    #print(ds_coupe.getSigns()[setsId[numCoord * nbCoinsTriangles + 3 * t + listVId[0][1]]],\
+                    #ds_coupe.getSigns()[setsId[numCoord * nbCoinsTriangles + 3 * t + listVId[1][1]]])
+    return ds_coupe

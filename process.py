@@ -4,7 +4,6 @@ from math import sqrt, acos, cos, sin, asin
 import numpy as np
 import scipy.sparse.linalg
 import cmath
-from process import *
 
 def defineBoundary(dz):
     idsInside = []
@@ -34,6 +33,14 @@ def fieldOnAnyPoint(p, vertices, u, gap = 0.001, alpha=0.5):
             break
         uz += u[i] / distance
     return uz / abs(uz)
+
+def findCommonVertices(f1 , f2):
+    listVId = []
+    for i, id1 in enumerate(f1):
+        for j, id2 in enumerate(f2):
+            if id1 == id2:
+                listVId.append([id1 - 1, i, j])
+    return listVId
 
 def verifJustesse(A, b, X, neighbours, idsBoundary):
 
