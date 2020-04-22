@@ -22,20 +22,6 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
     nbTriangles = len(faces)
     nbCoinsTriangles = 3 * nbTriangles
     nbVertices = len(vertices)
-    #for numCoord in range(2):
-#    for t in range(nbTriangles):
-#        for i in range(len(faces[t])):
-#            s.add(ds.find(numCoord * nbCoinsTriangles + 3 * t + i))
-    #for numCoord in range(2):
-#    for t in range(nbTriangles):
-#        for i in range(len(faces[t])):
-#            for idV, v in enumerate(s):
-#                if ds.find(numCoord//2 * nbCoinsTriangles + 3 * t + i) == v:
-#                    ids.append(idV)
-#                    break
-
-    #if len(ids) != 4 * 3 * len(faces):
-    #    print("ERROR 30304")
 
     signs = ds.getSigns()
 
@@ -80,23 +66,14 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
 
                 if numCoord == 0:
                     somZ = du[t] / (z/abs(z))
-                    #somZ = cmath.rect(1, np.pi/4) / (z/abs(z))
                 else:
                     somZ = dv[t] / (z/abs(z))
-                    #somZ = cmath.rect(1, 3 * np.pi/4) / (z/abs(z))
 
                 #b.append([0])
                 sign1 = -1 if signs[numCoord * nbCoinsTriangles + 3 * t + k] == True else 1
                 sign2 = 1 if signs[numCoord * nbCoinsTriangles + 3 * t + m] == True else -1
                 A[-1][id1] = sign1
                 A[-1][id2] = sign2
-                #if id1 == 2 and id2 == 3:
-                #print(id1, id2, t, k, m, i, j, sqrt(dist(vertices[i], vertices[j])), vertices[i], vertices[j], somZ.real)
-                #print(id1, id2, parentIds[id1], parentIds[id2], numCoord)
-                #print(id1, id2, t, parentIds[id1] // 3, somZ, numCoord)
-                #if id1 == 116 and id2 == 106:
-                #    print(id1, id2, sqrt(dist(vertices[i], vertices[j])) * somZ.real, i, j, t, du[t], dv[t], z)
-                #    print(t, parentIds[t] // 3)
 
                 b.append([sqrt(dist(vertices[i], vertices[j])) * somZ.real])
 
@@ -125,32 +102,6 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
                 A[-1][lenS + numCoord] = 1
                 #print(id1, id2)
                 b.append([0])
-    #    if val == 0:
-    #        print("ERROR 430534")
-    #    elif abs(val) == 1:
-    #        idG, idD = ids[3 * t + k], ids[3 * n + m]
-    #        if val == -1:
-    #            idG, idD = idD, idG
-    #        A.append([0 for _ in range(2 * len(s))])
-    #        A[-1][idG] = C_inter
-    #        A[-1][lenS + idD] = C_inter
-    #        b.append([0])
-    #        A.append([0 for _ in range(2 * len(s))])
-    #        A[-1][lenS + idG] = C_inter
-    #        A[-1][idD] = -C_inter
-    #        b.append([0])
-    #    elif abs(val) == 2:
-    #        idG, idD = ids[3 * t + k], ids[3 * n + m]
-    #        if val == -2:
-    #            idG, idD = idD, idG
-    #        A.append([0 for _ in range(2 * len(s))])
-    #        A[-1][idG] = C_inter
-    #        A[-1][idD] = C_inter
-    #        b.append([0])
-    #        A.append([0 for _ in range(2 * len(s))])
-    #        A[-1][lenS + idG] = C_inter
-    #        A[-1][lenS + idD] = C_inter
-    #        b.append([0])
 
     print("resolution du système linéaire")
     #A = np.matrix(A)
@@ -184,7 +135,7 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
 
     minu = min(u_coins_triangles)
     minv = min(v_coins_triangles)
-    minu, minv = min(minu, minv), min(minu, minv)
+    #minu, minv = min(minu, minv), min(minu, minv)
     for i in range(len(u_coins_triangles)) :
         u_coins_triangles[i] -= minu
         v_coins_triangles[i] -= minv

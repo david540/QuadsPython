@@ -14,7 +14,7 @@ from normals import *
 from singularities import *
 from vectorfield import *
 from frame import *
-from disjointset import *
+from disjointset2 import *
 from inutiles import computeIsoValueLinesRemake
 
 def main(filename):
@@ -47,7 +47,7 @@ def main(filename):
     zipArbreCouvrant(arbreCouvrant, neighbours, singularities)
     #print(a, b)
     mean_x_value = (max(vertices)[0] + min(vertices)[0]) / 2
-    for _ in range(3):
+    for _ in range(0):
         rotateFieldAboveXvalue(mean_x_value, a, b, faces, vertices)
     #print(mean_x_value)
     #print(a)

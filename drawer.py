@@ -109,8 +109,8 @@ def setCoordY(curY):
     return canvas_height - (curY - centreY) / scale
 
 def drawScalarField(canvas, u, v, faces, vertices):
-    m = max(max(u), max(v))*(1.5) + 0.000001
-    #m = max(u)*1.5 + 0.0000001
+    #m = max(max(u), max(v))*(1.5) + 0.000001
+    m = max(u)*1.5 + 0.0000001
     variance = 1
     for t in range(len(faces)):
         center = [sum([vertices[n - 1][j] for n in faces[t]]) / 3 for j in range(2)]
@@ -222,7 +222,7 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
     show_isovaluelines = False
     show_vector_fields = True
     show_arbre_couvrant = True
-    show_num_sets = True
+    show_num_sets = False
 
     initGlobalVariables(vertices)
     xmin, ymin, zmin = [int(t) - 1 for t in min(vertices)]

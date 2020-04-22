@@ -43,7 +43,7 @@ def getVectorFields(dz, neighbours, faces):
     arbreCouvrant = []
     idAct = 0
     compteur = 0
-    idToTest = [[0, 0]]
+    idToTest = [[123, cmath.phase(dz[123]) / 4]]
     maxi = 0
     while compteur <= len(neighbours):
         idAct, actual_angle = idToTest[0]
