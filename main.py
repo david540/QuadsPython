@@ -47,7 +47,7 @@ def main(filename):
     zipArbreCouvrant(arbreCouvrant, neighbours, singularities)
     #print(a, b)
     mean_x_value = (max(vertices)[0] + min(vertices)[0]) / 2
-    for _ in range(0):
+    for _ in range(3):
         rotateFieldAboveXvalue(mean_x_value, a, b, faces, vertices)
     #print(mean_x_value)
     #print(a)
@@ -74,10 +74,12 @@ def main(filename):
     #u = scalarFieldMiddleTriangle(faces, a, vertices)
 
     #v = scalarFieldLinearSystem(vertices, b, neighbours)
+    #print(min(u), max(u), min(v), max(v))
 
     print("Affichage")
-    drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
-        idsBoundary, singularities, v, u, a, b, arbreCouvrant, ds)
+    for sens in range(2):
+        drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
+            idsBoundary, singularities, u, v, a, b, arbreCouvrant, ds, sens)
 
 
 if __name__ == "__main__":

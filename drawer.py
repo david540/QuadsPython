@@ -109,7 +109,8 @@ def setCoordY(curY):
     return canvas_height - (curY - centreY) / scale
 
 def drawScalarField(canvas, u, v, faces, vertices):
-    m = max(u)*(1.5)
+    m = max(max(u), max(v))*(1.5) + 0.000001
+    #m = max(u)*1.5 + 0.0000001
     variance = 1
     for t in range(len(faces)):
         center = [sum([vertices[n - 1][j] for n in faces[t]]) / 3 for j in range(2)]
@@ -146,17 +147,42 @@ def drawScalarField(canvas, u, v, faces, vertices):
 def drawNumSet(canvas, faces, vertices, ds, c):
     trouvee = [False for _ in range(ds.getNumSets())]
     setsId = ds.getSetsId()
+    signes = ds.getSigns()
     for t in range(len(faces)):
-        for k in range(3):
-            trouvee[setsId[3 * len(faces) + 3 * t + k]] = True
-            trouvee[setsId[3 * t + k]] = True
-            textValue = str(setsId[c * 3 * len(faces) + 3 * t + k])
-            i = faces[t][k] - 1
-            canvas.create_text(setCoordX(vertices[i][0]), setCoordY(vertices[i][1]), text=textValue)
+        i, j, k = faces[t][0]-1, faces[t][1]-1, faces[t][2]-1
+        centerij = [(vertices[i][coord] + vertices[j][coord]) / 2 for coord in range(2)]
+        centerjk = [(vertices[j][coord] + vertices[k][coord]) / 2 for coord in range(2)]
+        centerki = [(vertices[k][coord] + vertices[i][coord]) / 2 for coord in range(2)]
+        centerijjk = [(centerij[coord] + centerjk[coord] + vertices[j][coord])/3 for coord in range(2)]
+        centerijki = [(centerij[coord] + centerki[coord] + vertices[i][coord])/3 for coord in range(2)]
+        centerkijk = [(centerki[coord] + centerjk[coord] + vertices[k][coord])/3 for coord in range(2)]
+        #i = faces[t][k] - 1
 
-    for v in trouvee:
-        if v == False:
-            print("ERROR 33945050623")
+        textValue = str(setsId[c * 3 * len(faces) + 3 * t + 1] // 1)
+        if signes[c * 3 * len(faces) + 3 * t + 1] == True:
+            textValue += "+"
+        else:
+            textValue += "-"
+        canvas.create_text(setCoordX(centerijjk[0]), setCoordY(centerijjk[1]), text=textValue)
+
+        textValue = str(setsId[c * 3 * len(faces) + 3 * t + 0] // 1)
+        if signes[c * 3 * len(faces) + 3 * t + 0] == True:
+            textValue += "+"
+        else:
+            textValue += "-"
+        canvas.create_text(setCoordX(centerijki[0]), setCoordY(centerijki[1]), text=textValue)
+
+        textValue = str(setsId[c * 3 * len(faces) + 3 * t + 2] // 1)
+        if signes[c * 3 * len(faces) + 3 * t + 2] == True:
+            textValue += "+"
+        else:
+            textValue += "-"
+        canvas.create_text(setCoordX(centerkijk[0]), setCoordY(centerkijk[1]), text=textValue)
+
+        #canvas.create_text(setCoordX(centerjk[0]), setCoordY(centerjk[1]), text=textValue)
+
+        #canvas.create_text(setCoordX(centerij[0]), setCoordY(centerij[1]), text=textValue)
+
 
 def drawScalarFieldMiddleTriangle(canvas, u, faces):
     m = max(u)
@@ -178,7 +204,7 @@ def drawNormalVectorSegm(canvas, origin, z, d=100, color="red", width=1):
 
 
 def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
-    idsBoundary, singularities, u, v, a, b, arbreCouvrant, ds):
+    idsBoundary, singularities, u, v, a, b, arbreCouvrant, ds, sens):
 
     master = Tk()
 
@@ -190,7 +216,7 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
     show_normal_vectors_faces = False
     show_scalar_field = True
     show_contour = False
-    show_links_between_vertices = False
+    show_links_between_vertices = True
     show_random_1ring = False
     show_frame_fields = False
     show_isovaluelines = False
@@ -206,6 +232,10 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
            width=canvas_width,
            height=canvas_height)
     canvas.pack()
+
+    if sens == 1:
+        u, v = v, u
+
 
     canvas.create_rectangle(0, 0, canvas_width, canvas_height, fill= "white")
     print(len(faces))
@@ -275,7 +305,7 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
 
     #print(v)
     if show_scalar_field:
-        drawScalarField(canvas, v, u, faces, vertices)
+        drawScalarField(canvas, u, v, faces, vertices)
     #drawScalarFieldMiddleTriangle(canvas, u, faces)
 
     for n, face in enumerate(faces):
@@ -300,6 +330,6 @@ def drawObj(faces, vertices, neighbours, contours, dz, quadrants,\
 
 
     if show_num_sets:
-        drawNumSet(canvas, faces, vertices, ds, 0)
+        drawNumSet(canvas, faces, vertices, ds, sens)
 
     mainloop()

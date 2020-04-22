@@ -52,6 +52,7 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
     parentIds = ds.getParentIds()
     nbDecoupe = 1 if len(listeCasDecoupe) > 0 else 0
     #nbDecoupe = 0
+
     for numCoord in range(2):
         for t in range(nbTriangles):
             for k, m in permutations(range(len(faces[t])), 2):
@@ -85,8 +86,8 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
                     #somZ = cmath.rect(1, 3 * np.pi/4) / (z/abs(z))
 
                 #b.append([0])
-                sign1 = -1 if signs[3 * t + k] == True else 1
-                sign2 = 1 if signs[3 * t + m] == True else -1
+                sign1 = -1 if signs[numCoord * nbCoinsTriangles + 3 * t + k] == True else 1
+                sign2 = 1 if signs[numCoord * nbCoinsTriangles + 3 * t + m] == True else -1
                 A[-1][id1] = sign1
                 A[-1][id2] = sign2
                 #if id1 == 2 and id2 == 3:
@@ -176,13 +177,14 @@ def scalarFieldLinearSystemDisjointSet(faces, du, dv, neifaces, ds, vertices, li
             u_coins_triangles[3 * t + k] = sign1 * sol[id1]
             v_coins_triangles[3 * t + k] = sign2 * sol[id2]
 
-            if t ==  len(faces) - 3:
-                print(u_coins_triangles[3 * t + k], v_coins_triangles[3 * t + k])
+            #if t ==  len(faces) - 3:
+            #    print(u_coins_triangles[3 * t + k], v_coins_triangles[3 * t + k])
             #print(t, k, id1, id2, sol[id1], sol[id2])
     print("champs u et v calculés")
 
     minu = min(u_coins_triangles)
     minv = min(v_coins_triangles)
+    minu, minv = min(minu, minv), min(minu, minv)
     for i in range(len(u_coins_triangles)) :
         u_coins_triangles[i] -= minu
         v_coins_triangles[i] -= minv

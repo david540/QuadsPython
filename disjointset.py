@@ -145,6 +145,7 @@ def setDisjointSet(vertices, faces, neifaces, a, b, arbreCouvrant, contours):
                     idG, idD = idD, idG
                 uG, uD, vG, vD = idG, idD, nbCoinsTriangles + idG, nbCoinsTriangles + idD
                 #print(abs(val))
+
                 if val == 0:
                     ds.merge(uG, uD, True)
                     ds.merge(vG, vD, True)
@@ -154,11 +155,14 @@ def setDisjointSet(vertices, faces, neifaces, a, b, arbreCouvrant, contours):
                     #print("ok")
                     ds.merge(uG, vD, False)
                     ds.merge(vG, uD, True)
+                    print("1 :", cmath.phase(a[t]) - cmath.phase(a[n]))
 
                 elif abs(val) == 2:
                     #print('ok')
                     ds.merge(uG, uD, False)
                     ds.merge(vG, vD, False)
+                    print("2 : ",cmath.phase(a[t]) - cmath.phase(a[n]))
+
 
     for t in range(nbTriangles):
         for k, m in combinations(range(len(faces[t])), 2):
